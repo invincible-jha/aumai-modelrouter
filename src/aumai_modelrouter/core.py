@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-import itertools
-from typing import Callable
+import threading
+from collections.abc import Callable
 
 from aumai_modelrouter.fallback import CircuitBreaker, FallbackChain
 from aumai_modelrouter.models import (
@@ -43,8 +43,9 @@ class ModelRouter:
         self,
         providers: list[ProviderConfig],
         policy: RoutingPolicy,
-        executor_factory: Callable[[ProviderConfig], Callable[[LLMRequest], LLMResponse]]
-        | None = None,
+        executor_factory: (
+            Callable[[ProviderConfig], Callable[[LLMRequest], LLMResponse]] | None
+        ) = None,
     ) -> None:
         if not providers:
             raise ValueError("ModelRouter requires at least one ProviderConfig.")
@@ -52,7 +53,11 @@ class ModelRouter:
         self._policy = policy
         self._executor_factory = executor_factory
         self._circuit_breaker = CircuitBreaker()
-        self._round_robin_counter: itertools.count[int] = itertools.count(0)
+        # Atomic round-robin counter — guarded by a lock so that concurrent
+        # calls to route() on the same router instance each advance the counter
+        # exactly once, regardless of CPython GIL implementation details.
+        self._rr_counter: int = 0
+        self._rr_lock: threading.Lock = threading.Lock()
         self._custom_executors: dict[
             Provider, Callable[[LLMRequest], LLMResponse]
         ] = {}
@@ -85,8 +90,8 @@ class ModelRouter:
             )
 
         scored = self._score_candidates(candidates, request)
-        # Sort descending by score
-        scored.sort(key=lambda t: t[1], reverse=True)
+        # Ordering is fully determined inside _score_candidates (which sorts for
+        # all strategies except round_robin, where rotation is the ordering).
 
         best_config, best_score = scored[0]
         selected_model = request.model or best_config.models[0]
@@ -198,9 +203,17 @@ class ModelRouter:
             scored.append((candidate, score))
 
         if strategy == RoutingStrategy.round_robin:
-            # Rotate the winner deterministically
-            idx = next(self._round_robin_counter) % len(scored)
+            # Atomically read-and-increment the counter so that concurrent
+            # route() calls each get a distinct rotation index.
+            with self._rr_lock:
+                idx = self._rr_counter % len(scored)
+                self._rr_counter += 1
+            # Rotate without sorting so the rotation order is the selection
+            # priority — the candidate at position idx wins this call.
             scored = scored[idx:] + scored[:idx]
+        else:
+            # All non-round-robin strategies: sort descending by score.
+            scored.sort(key=lambda t: t[1], reverse=True)
 
         return scored
 

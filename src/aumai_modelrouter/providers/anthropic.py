@@ -23,7 +23,7 @@ class AnthropicProvider:
         self._config = config
         self._base_url = (config.api_base or self._DEFAULT_BASE).rstrip("/")
         self._timeout = timeout
-        api_key = config.api_key or ""
+        api_key = config.api_key.get_secret_value() if config.api_key is not None else ""
         self._headers = {
             "x-api-key": api_key,
             "anthropic-version": self._API_VERSION,

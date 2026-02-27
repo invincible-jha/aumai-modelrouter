@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from enum import Enum
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, SecretStr, field_validator
 
 
 class Provider(str, Enum):
@@ -41,7 +41,7 @@ class ProviderConfig(BaseModel):
     cost_per_1k_output: float = Field(default=0.0, ge=0.0)
     avg_latency_ms: float = Field(default=500.0, gt=0.0)
     quality_score: float = Field(default=0.8, ge=0.0, le=1.0)
-    api_key: str | None = None
+    api_key: SecretStr | None = None
 
     @field_validator("models")
     @classmethod

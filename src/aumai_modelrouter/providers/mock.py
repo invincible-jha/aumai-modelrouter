@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from aumai_modelrouter.models import LLMRequest, LLMResponse, Provider, ProviderConfig
+from aumai_modelrouter.models import LLMRequest, LLMResponse, ProviderConfig
 
 
 class MockProvider:
@@ -36,7 +36,9 @@ class MockProvider:
         if self._raise_on_complete is not None:
             raise self._raise_on_complete
 
-        model = request.model or (self._config.models[0] if self._config.models else "mock-model")
+        model = request.model or (
+            self._config.models[0] if self._config.models else "mock-model"
+        )
         tokens_input = sum(len(m.get("content", "")) for m in request.messages) // 4
         tokens_output = len(self._response_content) // 4
 

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import time
 from collections import defaultdict
-from typing import Callable
+from collections.abc import Callable
 
 from aumai_modelrouter.models import LLMRequest, LLMResponse, Provider
 

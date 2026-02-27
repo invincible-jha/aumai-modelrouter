@@ -24,7 +24,7 @@ class OpenAIProvider:
         self._config = config
         self._base_url = (config.api_base or self._DEFAULT_BASE).rstrip("/")
         self._timeout = timeout
-        api_key = config.api_key or ""
+        api_key = config.api_key.get_secret_value() if config.api_key is not None else ""
         self._headers = {
             "Authorization": f"Bearer {api_key}",
             "Content-Type": "application/json",
@@ -36,7 +36,9 @@ class OpenAIProvider:
 
     def complete(self, request: LLMRequest) -> LLMResponse:
         """Send a chat completion request and return a structured response."""
-        model = request.model or (self._config.models[0] if self._config.models else "gpt-4o")
+        model = request.model or (
+            self._config.models[0] if self._config.models else "gpt-4o"
+        )
         payload: dict[str, object] = {
             "model": model,
             "messages": request.messages,

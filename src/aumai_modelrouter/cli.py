@@ -12,12 +12,9 @@ import click
 from aumai_modelrouter.core import ModelRouter, NoEligibleProviderError
 from aumai_modelrouter.models import (
     LLMRequest,
-    Provider,
     ProviderConfig,
     RoutingPolicy,
-    RoutingStrategy,
 )
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -133,7 +130,9 @@ def route_command(config: str, request_path: str, json_output: bool) -> None:
 )
 @click.option("--prompt", required=True, help="User prompt to send.")
 @click.option("--model", default=None, help="Override model selection.")
-@click.option("--max-tokens", default=1024, show_default=True, help="Max output tokens.")
+@click.option(
+    "--max-tokens", default=1024, show_default=True, help="Max output tokens."
+)
 @click.option("--json-output", is_flag=True, help="Emit result as JSON.")
 def execute_command(
     config: str,
